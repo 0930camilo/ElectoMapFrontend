@@ -211,6 +211,7 @@
         }
         @if (modal === 'lider') {
           <div class="form-grid"><label>Nombres<input name="nombres" [(ngModel)]="form['nombres']" required></label><label>Apellidos<input name="apellidos" [(ngModel)]="form['apellidos']" required></label><label>Documento<input name="documento" [(ngModel)]="form['documento']" required></label><label>Teléfono<input name="telefono" [(ngModel)]="form['telefono']"></label><label>Email<input name="email" type="email" [(ngModel)]="form['email']"></label><label>Cabecera<select name="cabeceraId" [(ngModel)]="form['cabeceraId']" required><option value="">Selecciona una cabecera</option>@for (item of cabeceraOptions; track item.id) { <option [value]="item.id" [disabled]="item.estado !== 'ACTIVA'">{{ item.nombre }} ({{ item.estado }})</option> }</select></label>
+            @if (editingId) { <label class="span-2">Nueva contraseña <small>(opcional, 12–72 caracteres)</small><input name="nuevaClave" type="password" [(ngModel)]="form['nuevaClave']" minlength="12" maxlength="72" autocomplete="new-password" placeholder="Déjala vacía para conservar la contraseña actual"></label> }
             @if (!editingId) { <label>Nombre de usuario<input name="username" [(ngModel)]="form['username']" required></label><label>Contraseña <small>(12–72 caracteres)</small><input name="password" type="password" [(ngModel)]="form['password']" required minlength="12" maxlength="72" autocomplete="new-password"></label> }
           </div>
         }

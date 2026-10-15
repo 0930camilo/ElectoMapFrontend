@@ -282,7 +282,8 @@ export class App {
       const row = value as Leader;
       this.form = {
         nombres: row.nombres, apellidos: row.apellidos, documento: row.documento,
-        telefono: row.telefono ?? '', email: row.email ?? '', cabeceraId: String(row.cabeceraId),
+        telefono: row.telefono ?? '', email: row.email ?? '', nuevaClave: '',
+        cabeceraId: String(row.cabeceraId),
       };
       void this.run(async () => {
         this.cabeceraOptions = await this.loadAllCabeceras();
@@ -313,6 +314,10 @@ export class App {
       this.error = 'La contraseña debe tener entre 12 y 72 caracteres.';
       return;
     }
+    if (entity === 'lider' && id && value['nuevaClave'] && (value['nuevaClave'].length < 12 || value['nuevaClave'].length > 72)) {
+      this.error = 'La nueva contraseña debe tener entre 12 y 72 caracteres.';
+      return;
+    }
     await this.run(async () => {
       switch (entity) {
         case 'cabecera':
@@ -321,7 +326,15 @@ export class App {
           break;
         case 'lider': {
           const body = id
-            ? { nombres: value['nombres'], apellidos: value['apellidos'], documento: value['documento'], telefono: value['telefono'], email: value['email'], cabeceraId: Number(value['cabeceraId']) }
+            ? {
+                nombres: value['nombres'],
+                apellidos: value['apellidos'],
+                documento: value['documento'],
+                telefono: value['telefono'],
+                email: value['email'],
+                ...(value['nuevaClave'] ? { nuevaClave: value['nuevaClave'] } : {}),
+                cabeceraId: Number(value['cabeceraId']),
+              }
             : { ...value, cabeceraId: Number(value['cabeceraId']) };
           await firstValueFrom(this.api.saveLider(body, id));
           await this.loadLideres();
