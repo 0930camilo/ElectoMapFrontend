@@ -24,6 +24,17 @@ export interface ProfileResponse {
   rol: Role;
 }
 
+export interface OcrCensoResult {
+  numeroDocumento: string | null;
+  departamentoVotacion: string | null;
+  municipioVotacion: string | null;
+  puestoVotacion: string | null;
+  direccion: string | null;
+  mesaVotacion: string | null;
+  textoDetectado: string;
+  confianza: number;
+}
+
 export interface LoginResult {
   token: string;
   type: string;

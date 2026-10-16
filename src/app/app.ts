@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from './core/api.service';
 import { AuthService } from './core/auth.service';
-import { AssignmentHistory, AuditEntry, Cabecera, DashboardSummary, ImportValidation, Leader, Page, ProfileUpdateRequest, Voter } from './core/models';
+import { AssignmentHistory, AuditEntry, Cabecera, DashboardSummary, ImportValidation, Leader, OcrCensoResult, Page, ProfileUpdateRequest, Voter } from './core/models';
 
 type Section = 'dashboard' | 'cabeceras' | 'lideres' | 'votantes' | 'importaciones' | 'auditoria';
 type Entity = 'cabecera' | 'lider' | 'votante';
@@ -54,6 +54,9 @@ export class App {
   importResult: ImportValidation | null = null;
   selectedVoter: Voter | null = null;
   voterHistory: AssignmentHistory[] | null = null;
+  ocrImage: File | null = null;
+  ocrResult: OcrCensoResult | null = null;
+  ocrError = '';
   detailTitle = '';
   detailRecord: Record<string, string> | null = null;
   voterLookupDocument = '';
@@ -275,6 +278,7 @@ export class App {
     this.modal = entity;
     this.editingId = null;
     this.form = this.initialForm(entity);
+    if (entity === 'votante') this.resetOcr();
     this.clearMessage();
     if (entity === 'lider') void this.run(async () => {
       this.cabeceraOptions = await this.loadAllCabeceras();
@@ -302,6 +306,7 @@ export class App {
       });
     } else if (entity === 'votante') {
       const row = value as Voter;
+      this.resetOcr();
       this.form = {
         tipoDocumento: row.tipoDocumento, numeroDocumento: row.numeroDocumento,
         nombres: row.nombres, apellidos: row.apellidos, telefono: row.telefono ?? '',
@@ -314,7 +319,63 @@ export class App {
     }
   }
 
-  closeModal(): void { this.modal = null; this.editingId = null; }
+  closeModal(): void {
+    this.modal = null;
+    this.editingId = null;
+    this.resetOcr();
+  }
+
+  selectOcrImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const image = input.files?.[0] ?? null;
+    this.ocrError = '';
+    this.ocrResult = null;
+    if (!image) {
+      this.ocrImage = null;
+      return;
+    }
+    if (!['image/png', 'image/jpeg'].includes(image.type)) {
+      this.ocrImage = null;
+      input.value = '';
+      this.ocrError = 'Selecciona una imagen PNG o JPEG.';
+      return;
+    }
+    if (image.size > 5 * 1024 * 1024) {
+      this.ocrImage = null;
+      input.value = '';
+      this.ocrError = 'La imagen no puede superar los 5 MB.';
+      return;
+    }
+    this.ocrImage = image;
+  }
+
+  async recognizeCensusImage(): Promise<void> {
+    if (!this.ocrImage) {
+      this.ocrError = 'Selecciona primero una captura PNG o JPEG.';
+      return;
+    }
+    this.ocrError = '';
+    await this.run(async () => {
+      this.ocrResult = await firstValueFrom(this.api.reconocerCenso(this.ocrImage!));
+      this.form = {
+        ...this.form,
+        numeroDocumento: this.ocrResult.numeroDocumento || this.form['numeroDocumento'],
+        departamentoVotacion: this.ocrResult.departamentoVotacion || this.form['departamentoVotacion'],
+        municipioVotacion: this.ocrResult.municipioVotacion || this.form['municipioVotacion'],
+        puestoVotacion: this.ocrResult.puestoVotacion || this.form['puestoVotacion'],
+        direccion: this.ocrResult.direccion || this.form['direccion'],
+        mesaVotacion: this.ocrResult.mesaVotacion || this.form['mesaVotacion'],
+      };
+    });
+    this.ocrError = this.error;
+    this.error = '';
+  }
+
+  private resetOcr(): void {
+    this.ocrImage = null;
+    this.ocrResult = null;
+    this.ocrError = '';
+  }
 
   async saveEntity(): Promise<void> {
     if (!this.modal) return;

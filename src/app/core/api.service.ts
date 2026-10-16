@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import {
-  ApiEnvelope, AssignmentHistory, AuditEntry, Cabecera, DashboardSummary, ImportValidation, Leader, LoginResult, Page, ProfileResponse, ProfileUpdateRequest, Voter,
+  ApiEnvelope, AssignmentHistory, AuditEntry, Cabecera, DashboardSummary, ImportValidation, Leader, LoginResult, OcrCensoResult, Page, ProfileResponse, ProfileUpdateRequest, Voter,
 } from './models';
 
 const API_URL = 'http://localhost:8080';
@@ -56,6 +56,11 @@ export class ApiService {
   }
   saveVotanteComoAdministrador(liderDocumento: string, votante: Record<string, unknown>): Observable<Voter> {
     return this.request('/api/votantes/administrador', 'POST', { liderDocumento, votante });
+  }
+  reconocerCenso(imagen: File): Observable<OcrCensoResult> {
+    const form = new FormData();
+    form.append('imagen', imagen);
+    return this.request('/api/votantes/ocr/censo', 'POST', form);
   }
   setVotanteState(id: number, estado: string): Observable<unknown> {
     return this.request(`/api/votantes/${id}/estado`, 'PATCH', { estado });
