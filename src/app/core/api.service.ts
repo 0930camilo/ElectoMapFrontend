@@ -23,8 +23,8 @@ export class ApiService {
     return this.get(`/api/dashboard/${role.toLowerCase()}`);
   }
 
-  cabeceras(page = 0, size = 10): Observable<Page<Cabecera>> {
-    return this.get('/api/cabeceras', { page, size });
+  cabeceras(page = 0, size = 10, filters: Record<string, string> = {}): Observable<Page<Cabecera>> {
+    return this.get('/api/cabeceras', { page, size, ...filters });
   }
   cabecera(id: number): Observable<Cabecera> { return this.get(`/api/cabeceras/${id}`); }
   saveCabecera(value: Partial<Cabecera>, id?: number): Observable<Cabecera> {

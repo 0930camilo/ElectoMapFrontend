@@ -108,6 +108,11 @@
         }
 
         @if (section === 'cabeceras' && isAdmin) {
+          <div class="filter-panel panel">
+            <div class="filter-title"><div><h2>Buscar cabeceras</h2><p class="muted">Filtra por nombre de cabecera</p></div><span class="subtle-icon">⌕</span></div>
+            <div class="filters-grid"><label>Nombre<input [(ngModel)]="cabeceraFilters['nombre']" placeholder="Nombre de la cabecera" (keyup.enter)="applyCabeceraFilters()"></label></div>
+            <div class="filter-actions"><button class="button outline" (click)="clearCabeceraFilters()">Limpiar</button><button class="button primary" (click)="applyCabeceraFilters()">Buscar cabeceras <span>⌕</span></button></div>
+          </div>
           <div class="toolbar"><div class="toolbar-copy"><strong>{{ totalElements }} cabeceras</strong><span>Organiza los equipos por territorio</span></div><label class="page-size">Filas <select [ngModel]="size" (ngModelChange)="changeSize($event)"><option [ngValue]="10">10</option><option [ngValue]="25">25</option><option [ngValue]="50">50</option><option [ngValue]="100">100</option></select></label></div>
           <div class="panel table-panel"><div class="table-scroll"><table><thead><tr><th>Cabecera</th><th>Zona</th><th>Líderes</th><th>Votantes</th><th>Estado</th><th class="actions-col">Acciones</th></tr></thead><tbody>
             @for (row of cabeceras; track row.id) {

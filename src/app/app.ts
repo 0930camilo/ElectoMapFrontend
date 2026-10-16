@@ -46,6 +46,7 @@ export class App {
   leaderOptions: Leader[] = [];
   votantes: Voter[] = [];
   auditoriaRows: AuditEntry[] = [];
+  cabeceraFilters: Record<string, string> = {};
   voterFilters: Record<string, string> = {};
   auditFilters: Record<string, string> = {};
   selectedFile: File | null = null;
@@ -242,6 +243,11 @@ export class App {
     await this.loadVotantes();
   }
 
+  async applyCabeceraFilters(): Promise<void> {
+    this.page = 0;
+    await this.loadCabeceras();
+  }
+
   async applyAuditFilters(): Promise<void> {
     this.page = 0;
     await this.loadAuditoria();
@@ -251,6 +257,12 @@ export class App {
     this.voterFilters = {};
     this.page = 0;
     void this.loadVotantes();
+  }
+
+  clearCabeceraFilters(): void {
+    this.cabeceraFilters = {};
+    this.page = 0;
+    void this.loadCabeceras();
   }
 
   clearAuditFilters(): void {
@@ -507,7 +519,11 @@ export class App {
   }
 
   private async loadCabeceras(): Promise<void> {
-    const result = await firstValueFrom(this.api.cabeceras(this.page, this.size));
+    const result = await firstValueFrom(this.api.cabeceras(
+      this.page,
+      this.size,
+      this.cleanFilters(this.cabeceraFilters),
+    ));
     this.setPage(result);
     this.cabeceras = result.content ?? [];
   }
