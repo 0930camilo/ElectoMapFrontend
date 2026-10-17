@@ -10,7 +10,7 @@ import { Leader } from '../../module/lideres/model/leader.model';
 import { LoginResult, ProfileResponse, ProfileUpdateRequest } from '../../module/auth/model/auth.model';
 import { AssignmentHistory, OcrCensoResult, Voter } from '../../module/votantes/model/voter.model';
 
-const API_URL = environment.apiUrl.replace(/\/$/, '');
+const API_URL = environment.apiUrl.replace(/\/+$/, '');
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
