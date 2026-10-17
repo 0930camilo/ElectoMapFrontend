@@ -3,9 +3,15 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, PLATFORM_ID, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { ApiService } from './core/api.service';
-import { AuthService } from './core/auth.service';
-import { AssignmentHistory, AuditEntry, Cabecera, DashboardSummary, ImportValidation, Leader, OcrCensoResult, Page, ProfileUpdateRequest, Voter } from './core/models';
+import { ApiService } from './core/services/api.service';
+import { AuthService } from './core/services/auth.service';
+import { AuditEntry, Page } from './shared/interface/api.models';
+import { ProfileUpdateRequest } from './module/auth/model/auth.model';
+import { DashboardSummary } from './module/dashboard/model/dashboard.model';
+import { Cabecera } from './module/cabeceras/model/cabecera.model';
+import { Leader } from './module/lideres/model/leader.model';
+import { AssignmentHistory, OcrCensoResult, Voter } from './module/votantes/model/voter.model';
+import { ImportValidation } from './module/importaciones/model/import.model';
 
 type Section = 'dashboard' | 'cabeceras' | 'lideres' | 'votantes' | 'importaciones' | 'auditoria';
 type Entity = 'cabecera' | 'lider' | 'votante';
@@ -196,6 +202,11 @@ export class App {
     this.cabeceras = [];
     this.lideres = [];
     this.votantes = [];
+  }
+
+  dismissFeedback(): void {
+    this.error = '';
+    this.notice = '';
   }
 
   async navigate(section: Section): Promise<void> {

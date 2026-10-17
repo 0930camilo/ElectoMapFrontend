@@ -1,11 +1,16 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import {
-  ApiEnvelope, AssignmentHistory, AuditEntry, Cabecera, DashboardSummary, ImportValidation, Leader, LoginResult, OcrCensoResult, Page, ProfileResponse, ProfileUpdateRequest, Voter,
-} from './models';
+import { environment } from '../../../environments/environment';
+import { ApiEnvelope, Page, AuditEntry } from '../../shared/interface/api.models';
+import { Cabecera } from '../../module/cabeceras/model/cabecera.model';
+import { DashboardSummary } from '../../module/dashboard/model/dashboard.model';
+import { ImportValidation } from '../../module/importaciones/model/import.model';
+import { Leader } from '../../module/lideres/model/leader.model';
+import { LoginResult, ProfileResponse, ProfileUpdateRequest } from '../../module/auth/model/auth.model';
+import { AssignmentHistory, OcrCensoResult, Voter } from '../../module/votantes/model/voter.model';
 
-const API_URL = 'http://localhost:8080';
+const API_URL = environment.apiUrl.replace(/\/$/, '');
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {

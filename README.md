@@ -1,59 +1,46 @@
-# ElectoMapFrontend
+# ElectoMap Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.0.2.
+Frontend standalone con Angular 20 para la gestión de la campaña.
 
-## Development server
-
-To start a local development server, run:
+## Desarrollo
 
 ```bash
-ng serve
+npm install
+npm start
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Angular sirve la aplicación en `http://localhost:4200`. El proxy de desarrollo (`proxy.conf.json`) reenvía las rutas `/api` a `http://localhost:8080`, evitando configurar la URL del backend en el código.
 
-## Code scaffolding
+## Configuración de entorno
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Los valores por entorno están en `src/environments/environment.ts` y `src/environments/environment.prod.ts`. `apiUrl` está vacío para usar rutas relativas `/api`; en producción, el servidor web debe reenviar esas rutas al backend.
+
+## Organización del código
+
+```text
+src/
+├── environments/
+└── app/
+    ├── core/
+    │   ├── interceptors/
+    │   └── services/
+    ├── module/
+    │   ├── auth/model/
+    │   ├── cabeceras/model/
+    │   ├── dashboard/model/
+    │   ├── importaciones/model/
+    │   ├── lideres/model/
+    │   └── votantes/model/
+    └── shared/
+        ├── enums/
+        └── interface/
+```
+
+Los modelos específicos se organizan por dominio y los servicios de autenticación, API e interceptores están en `core`. La interfaz actual sigue concentrada en el componente raíz `app.ts`/`app.html`; nuevas páginas y componentes pueden extraerse a `module/<dominio>/page` y `components/` al separar cada flujo.
+
+## Build y pruebas
 
 ```bash
-ng generate component component-name
+npm run build
+npm test
 ```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

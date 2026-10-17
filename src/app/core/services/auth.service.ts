@@ -1,6 +1,6 @@
 import { Injectable, PLATFORM_ID, afterNextRender, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { LoginResult, SessionUser } from './models';
+import { LoginResult, SessionUser } from '../../module/auth/model/auth.model';
 
 const SESSION_KEY = 'electomap.session';
 

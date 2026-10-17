@@ -63,8 +63,6 @@
           @if (section === 'votantes') { <button class="button primary" (click)="openCreate('votante')"><span>＋</span> Registrar votante</button> }
         </div>
 
-        @if (error) { <div class="alert error" role="alert"><span>!</span>{{ error }}<button (click)="error = ''" aria-label="Cerrar mensaje">×</button></div> }
-        @if (notice) { <div class="alert success" role="status"><span>✓</span>{{ notice }}<button (click)="notice = ''" aria-label="Cerrar mensaje">×</button></div> }
         @if (loading) { <div class="loading"><span class="spinner"></span> Cargando información…</div> }
 
         @if (section === 'dashboard') {
@@ -199,6 +197,18 @@
         }
       </section>
     </main>
+    @if (error || notice) {
+      <div class="feedback-backdrop">
+        <section class="feedback-dialog" [class.is-error]="!!error" [attr.role]="error ? 'alertdialog' : 'status'" aria-modal="true" aria-labelledby="feedback-title" aria-live="assertive">
+          <span class="feedback-icon" aria-hidden="true">{{ error ? '!' : '✓' }}</span>
+          <p class="eyebrow">{{ error ? 'NO SE PUDO COMPLETAR' : 'ACCIÓN COMPLETADA' }}</p>
+          <h2 id="feedback-title">{{ error ? 'Ocurrió un problema' : '¡Listo!' }}</h2>
+          <p class="feedback-message">{{ error || notice }}</p>
+          <button class="button primary feedback-dismiss" (click)="dismissFeedback()">Entendido</button>
+          <button class="feedback-close" (click)="dismissFeedback()" aria-label="Cerrar mensaje">×</button>
+        </section>
+      </div>
+    }
   </div>
 }
 
