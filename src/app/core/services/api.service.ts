@@ -10,7 +10,7 @@ import { Leader } from '../../module/lideres/model/leader.model';
 import { LoginResult, ProfileResponse, ProfileUpdateRequest } from '../../module/auth/model/auth.model';
 import { AssignmentHistory, OcrCensoResult, Voter } from '../../module/votantes/model/voter.model';
 
-const API_URL = environment.apiUrl.replace(/\/+$/, '');
+const API_BASE_URL = environment.apiUrl.replace(/\/+$/, '');
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -92,7 +92,7 @@ export class ApiService {
   reporteErrores(file: File): Observable<Blob> {
     const form = new FormData();
     form.append('archivo', file);
-    return this.http.post(`${API_URL}/api/votantes/importaciones/reporte-errores`, form, { responseType: 'blob' });
+    return this.http.post(this.apiUrl('/api/votantes/importaciones/reporte-errores'), form, { responseType: 'blob' });
   }
 
   auditoria(page = 0, size = 10, filters: Record<string, string> = {}): Observable<Page<AuditEntry>> {
@@ -106,11 +106,16 @@ export class ApiService {
   }
 
   private get<T>(path: string, params?: Record<string, string | number>): Observable<T> {
-    return this.http.get<unknown>(`${API_URL}${path}`, { params: this.params(params) }).pipe(map(response => this.unwrap<T>(response)));
+    return this.http.get<unknown>(this.apiUrl(path), { params: this.params(params) }).pipe(map(response => this.unwrap<T>(response)));
   }
 
   private request<T>(path: string, method: string, body?: unknown): Observable<T> {
-    return this.http.request<unknown>(method, `${API_URL}${path}`, { body }).pipe(map(response => this.unwrap<T>(response)));
+    return this.http.request<unknown>(method, this.apiUrl(path), { body }).pipe(map(response => this.unwrap<T>(response)));
+  }
+
+  private apiUrl(path: string): string {
+    const normalizedPath = path.replace(/^\/+/, '');
+    return API_BASE_URL ? `${API_BASE_URL}/${normalizedPath}` : `/${normalizedPath}`;
   }
 
   private params(input?: Record<string, string | number>): HttpParams {
