@@ -1,17 +1,24 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, PLATFORM_ID, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { ApiService } from './core/services/api.service';
+import { ApiErrorService } from './core/services/api-error.service';
 import { AuthService } from './core/services/auth.service';
+import { LoadingService } from './core/services/loading.service';
 import { AuditEntry, Page } from './shared/interface/api.models';
 import { ProfileUpdateRequest } from './module/auth/model/auth.model';
+import { AuthApiService } from './module/auth/services/auth-api.service';
+import { CabeceraService } from './module/cabeceras/services/cabecera.service';
+import { DashboardService } from './module/dashboard/services/dashboard.service';
 import { DashboardSummary } from './module/dashboard/model/dashboard.model';
 import { Cabecera } from './module/cabeceras/model/cabecera.model';
+import { ImportacionService } from './module/importaciones/services/importacion.service';
+import { AuditoriaService } from './module/auditoria/services/auditoria.service';
+import { LiderService } from './module/lideres/services/lider.service';
 import { Leader } from './module/lideres/model/leader.model';
 import { AssignmentHistory, OcrCensoResult, Voter } from './module/votantes/model/voter.model';
 import { ImportValidation } from './module/importaciones/model/import.model';
+import { VotanteService } from './module/votantes/services/votante.service';
 
 type Section = 'dashboard' | 'cabeceras' | 'lideres' | 'votantes' | 'importaciones' | 'auditoria';
 type Entity = 'cabecera' | 'lider' | 'votante';
@@ -23,8 +30,16 @@ type Entity = 'cabecera' | 'lider' | 'votante';
   styleUrl: './app.css',
 })
 export class App {
-  private readonly api = inject(ApiService);
+  private readonly authApi = inject(AuthApiService);
+  private readonly cabeceraApi = inject(CabeceraService);
+  private readonly dashboardApi = inject(DashboardService);
+  private readonly importApi = inject(ImportacionService);
+  private readonly auditApi = inject(AuditoriaService);
+  private readonly liderApi = inject(LiderService);
+  private readonly votanteApi = inject(VotanteService);
+  private readonly apiErrors = inject(ApiErrorService);
   readonly auth = inject(AuthService);
+  readonly loading = inject(LoadingService).isLoading;
   private readonly platformId = inject(PLATFORM_ID);
   private readonly cdr = inject(ChangeDetectorRef);
   private loadedDashboardFor: number | null = null;
@@ -33,7 +48,6 @@ export class App {
   password = '';
   showPassword = false;
   section: Section = 'dashboard';
-  loading = false;
   error = '';
   notice = '';
   modal: Entity | null = null;
@@ -89,19 +103,19 @@ export class App {
     ]);
   }
   private async loadAllCabeceras(): Promise<Cabecera[]> {
-    const first = await firstValueFrom(this.api.cabeceras(0, 100));
+    const first = await firstValueFrom(this.cabeceraApi.list(0, 100));
     const items = [...(first.content ?? [])];
     for (let index = 1; index < (first.totalPages ?? 1); index++) {
-      const next = await firstValueFrom(this.api.cabeceras(index, 100));
+      const next = await firstValueFrom(this.cabeceraApi.list(index, 100));
       items.push(...(next.content ?? []));
     }
     return items;
   }
   private async loadAllLideres(): Promise<Leader[]> {
-    const first = await firstValueFrom(this.api.lideres(0, 100));
+    const first = await firstValueFrom(this.liderApi.list(0, 100));
     const items = [...(first.content ?? [])];
     for (let index = 1; index < (first.totalPages ?? 1); index++) {
-      const next = await firstValueFrom(this.api.lideres(index, 100));
+      const next = await firstValueFrom(this.liderApi.list(index, 100));
       items.push(...(next.content ?? []));
     }
     return items;
@@ -129,7 +143,7 @@ export class App {
       return;
     }
     await this.run(async () => {
-      const result = await firstValueFrom(this.api.login(this.username.trim(), this.password));
+      const result = await firstValueFrom(this.authApi.login(this.username.trim(), this.password));
       this.auth.saveSession(result);
       this.password = '';
       this.section = 'dashboard';
@@ -146,7 +160,7 @@ export class App {
     this.profileModalOpen = true;
     if (user.rol === 'LIDER') {
       await this.run(async () => {
-        const leader = await firstValueFrom(this.api.miPerfilLider());
+        const leader = await firstValueFrom(this.liderApi.getCurrent());
         this.profileForm = {
           ...this.profileForm,
           nombres: leader.nombres,
@@ -172,7 +186,7 @@ export class App {
     const credentialChanged = !!form.nuevaClave || form.username.trim() !== this.auth.user()?.username;
     const username = form.username.trim();
     await this.run(async () => {
-      const result = await firstValueFrom(this.api.updateProfile({
+      const result = await firstValueFrom(this.authApi.updateProfile({
         ...form,
         nombres: form.nombres.trim(),
         apellidos: form.apellidos.trim(),
@@ -223,12 +237,12 @@ export class App {
     await this.run(async () => {
       switch (section) {
         case 'dashboard':
-          this.dashboard = await firstValueFrom(this.api.dashboard(this.isAdmin ? 'ADMIN' : 'LIDER'));
-          if (this.isLeader) this.profile = await firstValueFrom(this.api.miPerfilLider());
+          this.dashboard = await firstValueFrom(this.dashboardApi.getSummary(this.isAdmin ? 'ADMIN' : 'LIDER'));
+          if (this.isLeader) this.profile = await firstValueFrom(this.liderApi.getCurrent());
           break;
         case 'cabeceras': await this.loadCabeceras(); break;
         case 'lideres':
-          if (this.isLeader) this.profile = await firstValueFrom(this.api.miPerfilLider());
+          if (this.isLeader) this.profile = await firstValueFrom(this.liderApi.getCurrent());
           else await this.loadLideres();
           break;
         case 'votantes': await this.loadVotantes(); break;
@@ -368,7 +382,7 @@ export class App {
     }
     this.ocrError = '';
     await this.run(async () => {
-      this.ocrResult = await firstValueFrom(this.api.reconocerCenso(this.ocrImage!));
+      this.ocrResult = await firstValueFrom(this.votanteApi.recognizeCensus(this.ocrImage!));
       this.form = {
         ...this.form,
         numeroDocumento: this.ocrResult.numeroDocumento || this.form['numeroDocumento'],
@@ -406,7 +420,7 @@ export class App {
     await this.run(async () => {
       switch (entity) {
         case 'cabecera':
-          await firstValueFrom(this.api.saveCabecera(value, id));
+          await firstValueFrom(this.cabeceraApi.save(value, id));
           await this.loadCabeceras();
           break;
         case 'lider': {
@@ -421,16 +435,16 @@ export class App {
                 cabeceraId: Number(value['cabeceraId']),
               }
             : { ...value, cabeceraId: Number(value['cabeceraId']) };
-          await firstValueFrom(this.api.saveLider(body, id));
+          await firstValueFrom(this.liderApi.save(body, id));
           await this.loadLideres();
           break;
         }
         case 'votante':
           if (!id && this.isAdmin) {
             const { liderDocumento, ...votante } = value;
-            await firstValueFrom(this.api.saveVotanteComoAdministrador(liderDocumento, votante));
+            await firstValueFrom(this.votanteApi.saveForLeader(liderDocumento, votante));
           } else {
-            await firstValueFrom(this.api.saveVotante(value, id));
+            await firstValueFrom(this.votanteApi.save(value, id));
           }
           await this.loadVotantes();
           break;
@@ -442,7 +456,7 @@ export class App {
 
   async toggleCabecera(row: Cabecera): Promise<void> {
     await this.run(async () => {
-      await firstValueFrom(this.api.setCabeceraState(row.id, row.estado === 'ACTIVA' ? 'INACTIVA' : 'ACTIVA'));
+      await firstValueFrom(this.cabeceraApi.setState(row.id, row.estado === 'ACTIVA' ? 'INACTIVA' : 'ACTIVA'));
       await this.loadCabeceras();
       this.notice = 'Estado actualizado.';
     });
@@ -450,7 +464,7 @@ export class App {
 
   async showCabecera(row: Cabecera): Promise<void> {
     await this.run(async () => {
-      const item = await firstValueFrom(this.api.cabecera(row.id));
+      const item = await firstValueFrom(this.cabeceraApi.get(row.id));
       this.detailTitle = item.nombre;
       this.detailRecord = {
         ID: String(item.id), Nombre: item.nombre, Descripción: item.descripcion || '—',
@@ -463,7 +477,7 @@ export class App {
 
   async toggleLeader(row: Leader): Promise<void> {
     await this.run(async () => {
-      await firstValueFrom(this.api.setLiderState(row.id, row.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'));
+      await firstValueFrom(this.liderApi.setState(row.id, row.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'));
       await this.loadLideres();
       this.notice = 'Estado actualizado.';
     });
@@ -471,7 +485,7 @@ export class App {
 
   async showLeader(row: Leader): Promise<void> {
     await this.run(async () => {
-      const item = await firstValueFrom(this.api.lider(row.id));
+      const item = await firstValueFrom(this.liderApi.get(row.id));
       this.detailTitle = `${item.nombres} ${item.apellidos}`;
       this.detailRecord = {
         ID: String(item.id), Usuario: item.username, Documento: item.documento,
@@ -483,7 +497,7 @@ export class App {
 
   async setVoterState(row: Voter, estado: string): Promise<void> {
     await this.run(async () => {
-      await firstValueFrom(this.api.setVotanteState(row.id, estado));
+      await firstValueFrom(this.votanteApi.setState(row.id, estado));
       await this.loadVotantes();
       this.notice = 'Estado del votante actualizado.';
     });
@@ -491,7 +505,7 @@ export class App {
 
   async showVoter(row: Voter): Promise<void> {
     await this.run(async () => {
-      this.selectedVoter = await firstValueFrom(this.api.votante(row.id));
+      this.selectedVoter = await firstValueFrom(this.votanteApi.get(row.id));
       this.voterHistory = null;
       this.modal = null;
     });
@@ -500,7 +514,7 @@ export class App {
   async lookupVoter(): Promise<void> {
     if (!this.voterLookupDocument.trim()) return;
     await this.run(async () => {
-      this.selectedVoter = await firstValueFrom(this.api.votanteDocumento(this.voterLookupDocument.trim()));
+      this.selectedVoter = await firstValueFrom(this.votanteApi.getByDocument(this.voterLookupDocument.trim()));
       this.voterHistory = null;
     });
   }
@@ -508,7 +522,7 @@ export class App {
   async loadHistory(row: Voter): Promise<void> {
     await this.run(async () => {
       this.selectedVoter = row;
-      this.voterHistory = await firstValueFrom(this.api.historialAsignaciones(row.id));
+      this.voterHistory = await firstValueFrom(this.votanteApi.getAssignmentHistory(row.id));
     });
   }
 
@@ -521,7 +535,7 @@ export class App {
       return;
     }
     await this.run(async () => {
-      await firstValueFrom(this.api.asignarLider(row.id, documento, motivo));
+      await firstValueFrom(this.votanteApi.assignLeader(row.id, documento, motivo));
       await this.loadVotantes();
       this.notice = 'Votante reasignado correctamente.';
     });
@@ -530,7 +544,7 @@ export class App {
   async deleteVoter(row: Voter): Promise<void> {
     if (!isPlatformBrowser(this.platformId) || !window.confirm(`¿Eliminar lógicamente a ${row.nombres} ${row.apellidos}?`)) return;
     await this.run(async () => {
-      await firstValueFrom(this.api.eliminarVotante(row.id));
+      await firstValueFrom(this.votanteApi.delete(row.id));
       await this.loadVotantes();
       this.notice = 'Votante eliminado de las consultas normales.';
     });
@@ -554,7 +568,7 @@ export class App {
   async validateImport(): Promise<void> {
     if (!this.selectedFile) { this.error = 'Selecciona primero un archivo CSV o XLSX.'; return; }
     await this.run(async () => {
-      this.importResult = await firstValueFrom(this.api.validarImportacion(this.selectedFile!));
+      this.importResult = await firstValueFrom(this.importApi.validate(this.selectedFile!));
     });
   }
 
@@ -564,7 +578,7 @@ export class App {
       return;
     }
     await this.run(async () => {
-      this.importResult = await firstValueFrom(this.api.importar(this.selectedFile!, Number(this.importLeaderId)));
+      this.importResult = await firstValueFrom(this.importApi.execute(this.selectedFile!, Number(this.importLeaderId)));
       this.notice = 'Importación procesada.';
       await this.loadVotantes();
     });
@@ -576,7 +590,7 @@ export class App {
       return;
     }
     await this.run(async () => {
-      const blob = await firstValueFrom(this.api.reporteErrores(this.selectedFile!));
+      const blob = await firstValueFrom(this.importApi.downloadErrorReport(this.selectedFile!));
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -592,7 +606,7 @@ export class App {
   }
 
   private async loadCabeceras(): Promise<void> {
-    const result = await firstValueFrom(this.api.cabeceras(
+    const result = await firstValueFrom(this.cabeceraApi.list(
       this.page,
       this.size,
       this.cleanFilters(this.cabeceraFilters),
@@ -601,17 +615,17 @@ export class App {
     this.cabeceras = result.content ?? [];
   }
   private async loadLideres(): Promise<void> {
-    const result = await firstValueFrom(this.api.lideres(this.page, this.size));
+    const result = await firstValueFrom(this.liderApi.list(this.page, this.size));
     this.setPage(result);
     this.lideres = result.content ?? [];
   }
   private async loadVotantes(): Promise<void> {
-    const result = await firstValueFrom(this.api.votantes(this.page, this.size, this.cleanFilters(this.voterFilters)));
+    const result = await firstValueFrom(this.votanteApi.list(this.page, this.size, this.cleanFilters(this.voterFilters)));
     this.setPage(result);
     this.votantes = result.content ?? [];
   }
   private async loadAuditoria(): Promise<void> {
-    const result = await firstValueFrom(this.api.auditoria(this.page, this.size, this.cleanFilters(this.auditFilters)));
+    const result = await firstValueFrom(this.auditApi.list(this.page, this.size, this.cleanFilters(this.auditFilters)));
     this.setPage(result);
     this.auditoriaRows = result.content ?? [];
   }
@@ -646,25 +660,16 @@ export class App {
   }
   private clearMessage(): void { this.error = ''; this.notice = ''; }
   private async run(operation: () => Promise<void>): Promise<void> {
-    this.loading = true;
     this.error = '';
     try {
       await operation();
     } catch (cause) {
       this.error = this.errorMessage(cause);
     } finally {
-      this.loading = false;
       this.cdr.markForCheck();
     }
   }
   private errorMessage(cause: unknown): string {
-    if (cause instanceof HttpErrorResponse) {
-      const body = cause.error as { message?: string } | null;
-      if (cause.status === 401) return 'Tu sesión expiró. Inicia sesión nuevamente.';
-      if (cause.status === 403) return 'No tienes permisos para realizar esta acción.';
-      return body?.message || cause.message || 'No se pudo conectar con el servidor.';
-    }
-    if (cause instanceof Error) return cause.message;
-    return 'Ocurrió un error inesperado.';
+    return this.apiErrors.message(cause);
   }
 }

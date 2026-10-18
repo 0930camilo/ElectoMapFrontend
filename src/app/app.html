@@ -16,9 +16,9 @@
           <button class="password-toggle" type="button" [attr.aria-label]="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="showPassword" (click)="showPassword = !showPassword">{{ showPassword ? 'Ocultar' : 'Mostrar' }}</button>
         </div>
         @if (error) { <div class="alert error" role="alert">{{ error }}</div> }
-        <button class="button primary full login-submit" type="submit" [disabled]="loading" [attr.aria-busy]="loading">
-          @if (loading) { <span class="login-spinner" aria-hidden="true"></span> }
-          <span>{{ loading ? 'Ingresando…' : 'Iniciar sesión' }}</span>
+        <button class="button primary full login-submit" type="submit" [disabled]="loading()" [attr.aria-busy]="loading()">
+          @if (loading()) { <span class="login-spinner" aria-hidden="true"></span> }
+          <span>{{ loading() ? 'Ingresando…' : 'Iniciar sesión' }}</span>
         </button>
       </form>
       <p class="login-foot">Acceso protegido · API ElectoMap</p>
@@ -68,7 +68,7 @@
           @if (section === 'votantes') { <button class="button primary" (click)="openCreate('votante')"><span>＋</span> Registrar votante</button> }
         </div>
 
-        @if (loading) { <div class="loading"><span class="spinner"></span> Cargando información…</div> }
+        @if (loading()) { <div class="loading"><span class="spinner"></span> Cargando información…</div> }
 
         @if (section === 'dashboard') {
           @if (dashboard; as summary) {
@@ -107,7 +107,7 @@
                 } @else { <div class="empty-small">No hay cabeceras con actividad todavía.</div> }
               </article>
             </div>
-          } @else if (!loading) { <div class="empty-state">No hay datos disponibles. Comprueba la conexión con la API.</div> }
+          } @else if (!loading()) { <div class="empty-state">No hay datos disponibles. Comprueba la conexión con la API.</div> }
         }
 
         @if (section === 'cabeceras' && isAdmin) {
@@ -174,12 +174,12 @@
             <article class="panel import-card"><div class="import-step"><span>01</span><div><h2>Selecciona el archivo</h2><p class="muted">CSV o Excel (.xlsx), hasta 5 MB</p></div></div>
               <label class="file-drop"><input type="file" accept=".csv,.xlsx" (change)="selectFile($event)"><span class="upload-icon">⇧</span><strong>{{ selectedFile?.name || 'Haz clic para cargar un archivo' }}</strong><small>{{ selectedFile ? (selectedFile.size / 1024 | number:'1.0-0') + ' KB' : 'o arrástralo hasta aquí · CSV / XLSX' }}</small></label>
               <div class="required-fields"><strong>Columnas obligatorias</strong><p>tipoDocumento, numeroDocumento, nombres, apellidos, mesaVotacion</p><small>Opcionales: telefono, direccion, barrio, estado, observaciones</small></div>
-              <div class="button-row"><button class="button outline" (click)="validateImport()" [disabled]="!selectedFile || loading">Validar archivo</button><button class="button primary" (click)="downloadErrorReport()" [disabled]="!selectedFile || !importResult || loading">Descargar errores CSV</button></div>
+              <div class="button-row"><button class="button outline" (click)="validateImport()" [disabled]="!selectedFile || loading()">Validar archivo</button><button class="button primary" (click)="downloadErrorReport()" [disabled]="!selectedFile || !importResult || loading()">Descargar errores CSV</button></div>
             </article>
             <article class="panel import-card"><div class="import-step"><span>02</span><div><h2>Importa votantes</h2><p class="muted">Asigna los registros al líder responsable</p></div></div>
               <label>Líder responsable<select [(ngModel)]="importLeaderId"><option value="">Selecciona un líder</option>@for (leader of leaderOptions; track leader.id) { <option [value]="leader.id" [disabled]="leader.estado !== 'ACTIVO'">{{ leader.nombres }} {{ leader.apellidos }} · {{ leader.cabeceraNombre }} ({{ leader.estado }})</option> }</select></label>
               <div class="import-info"><span>i</span><p>Primero valida el archivo. Solo se guardarán filas válidas; los errores se reportan sin interrumpir la importación.</p></div>
-              <button class="button primary full" (click)="executeImport()" [disabled]="!selectedFile || !importLeaderId || loading">Importar registros <span>→</span></button>
+              <button class="button primary full" (click)="executeImport()" [disabled]="!selectedFile || !importLeaderId || loading()">Importar registros <span>→</span></button>
             </article>
           </div>
           @if (importResult; as result) {
@@ -238,7 +238,7 @@
         @if (modal === 'votante') {
           <section class="ocr-panel" aria-label="Lectura de captura del censo">
             <div class="ocr-panel-heading"><div><strong>Completar desde captura del censo</strong><p>La lectura propone datos; revísalos antes de guardar.</p></div><span class="ocr-badge">OCR</span></div>
-            <div class="ocr-controls"><label class="ocr-file"><input type="file" accept="image/png,image/jpeg" (change)="selectOcrImage($event)"><span class="ocr-upload-icon">⇧</span><span>{{ ocrImage?.name || 'Seleccionar imagen PNG o JPEG' }}</span></label><button type="button" class="button outline" (click)="recognizeCensusImage()" [disabled]="!ocrImage || loading">{{ loading ? 'Analizando…' : 'Leer captura' }}</button></div>
+            <div class="ocr-controls"><label class="ocr-file"><input type="file" accept="image/png,image/jpeg" (change)="selectOcrImage($event)"><span class="ocr-upload-icon">⇧</span><span>{{ ocrImage?.name || 'Seleccionar imagen PNG o JPEG' }}</span></label><button type="button" class="button outline" (click)="recognizeCensusImage()" [disabled]="!ocrImage || loading()">{{ loading() ? 'Analizando…' : 'Leer captura' }}</button></div>
             <p class="ocr-hint">Imagen de hasta 5 MB. No se almacena y no registra el votante automáticamente.</p>
             @if (ocrError) { <div class="alert error ocr-error" role="alert">{{ ocrError }}</div> }
             @if (ocrResult; as result) {
@@ -247,7 +247,7 @@
           </section>
           <div class="form-grid">@if (isAdmin && !editingId) { <label class="span-2">Líder responsable<select name="liderDocumento" [(ngModel)]="form['liderDocumento']" required><option value="">Selecciona un líder activo</option>@for (item of activeLeaderOptions; track item.id) { <option [value]="item.documento">{{ item.documento }} · {{ item.nombres }} {{ item.apellidos }}</option> }</select></label> }<label>Tipo de documento<select name="tipoDocumento" [(ngModel)]="form['tipoDocumento']" required>@for (item of documentTypes; track item) { <option [value]="item">{{ item }}</option> }</select></label><label>Número de documento<input name="numeroDocumento" [(ngModel)]="form['numeroDocumento']" required></label><label>Nombres<input name="nombres" [(ngModel)]="form['nombres']" required></label><label>Apellidos<input name="apellidos" [(ngModel)]="form['apellidos']" required></label><label>Teléfono<input name="telefono" [(ngModel)]="form['telefono']"></label><label>Departamento del puesto<input name="departamentoVotacion" [(ngModel)]="form['departamentoVotacion']"></label><label>Municipio del puesto<input name="municipioVotacion" [(ngModel)]="form['municipioVotacion']"></label><label>Nombre del puesto de votación<input name="puestoVotacion" [(ngModel)]="form['puestoVotacion']"></label><label>Dirección del puesto de votación<input name="direccion" [(ngModel)]="form['direccion']"></label><label>Barrio<input name="barrio" [(ngModel)]="form['barrio']"></label><label>Mesa de votación<input name="mesaVotacion" [(ngModel)]="form['mesaVotacion']" required></label><label>Estado<select name="estado" [(ngModel)]="form['estado']">@for (item of voterStates; track item) { <option [value]="item">{{ item.replace('_', ' ') }}</option> }</select></label><label class="span-2">Observaciones<textarea name="observaciones" [(ngModel)]="form['observaciones']" rows="3"></textarea></label></div>
         }
-        <div class="modal-actions"><button type="button" class="button outline" (click)="closeModal()">Cancelar</button><button type="submit" class="button primary" [disabled]="loading">{{ loading ? 'Guardando…' : (editingId ? 'Guardar cambios' : 'Crear registro') }}</button></div>
+        <div class="modal-actions"><button type="button" class="button outline" (click)="closeModal()">Cancelar</button><button type="submit" class="button primary" [disabled]="loading()">{{ loading() ? 'Guardando…' : (editingId ? 'Guardar cambios' : 'Crear registro') }}</button></div>
       </form>
     </section>
   </div>
@@ -318,7 +318,7 @@
             <label>Nueva contraseña<input name="profileNuevaClave" [(ngModel)]="profileForm.nuevaClave" type="password" minlength="12" maxlength="72" autocomplete="new-password" placeholder="Mínimo 12 caracteres"></label>
           </div>
         </div>
-        <div class="modal-actions"><button class="button outline" type="button" (click)="closeProfileEditor()">Cancelar</button><button class="button primary" type="submit" [disabled]="loading">{{ loading ? 'Guardando…' : 'Guardar perfil' }}</button></div>
+        <div class="modal-actions"><button class="button outline" type="button" (click)="closeProfileEditor()">Cancelar</button><button class="button primary" type="submit" [disabled]="loading()">{{ loading() ? 'Guardando…' : 'Guardar perfil' }}</button></div>
       </form>
     </section>
   </div>
