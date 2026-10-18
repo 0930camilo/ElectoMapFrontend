@@ -147,7 +147,7 @@ export class App {
       this.auth.saveSession(result);
       this.password = '';
       this.section = 'dashboard';
-    });
+    }, 'login');
   }
 
   async openProfileEditor(): Promise<void> {
@@ -659,17 +659,17 @@ export class App {
     return this.isAdmin || (this.isLeader && ['dashboard', 'lideres', 'votantes'].includes(section));
   }
   private clearMessage(): void { this.error = ''; this.notice = ''; }
-  private async run(operation: () => Promise<void>): Promise<void> {
+  private async run(operation: () => Promise<void>, errorContext: 'login' | 'default' = 'default'): Promise<void> {
     this.error = '';
     try {
       await operation();
     } catch (cause) {
-      this.error = this.errorMessage(cause);
+      this.error = this.errorMessage(cause, errorContext);
     } finally {
       this.cdr.markForCheck();
     }
   }
-  private errorMessage(cause: unknown): string {
-    return this.apiErrors.message(cause);
+  private errorMessage(cause: unknown, context: 'login' | 'default'): string {
+    return this.apiErrors.message(cause, context);
   }
 }
