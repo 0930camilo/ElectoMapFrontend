@@ -10,9 +10,11 @@
         <label>Usuario
           <input name="username" [(ngModel)]="username" autocomplete="username" required placeholder="Tu usuario">
         </label>
-        <label>Contraseña
-          <input name="password" [(ngModel)]="password" type="password" autocomplete="current-password" required placeholder="Tu contraseña">
-        </label>
+        <label for="login-password">Contraseña</label>
+        <div class="password-input">
+          <input id="login-password" name="password" [(ngModel)]="password" [type]="showPassword ? 'text' : 'password'" autocomplete="current-password" required placeholder="Tu contraseña">
+          <button class="password-toggle" type="button" [attr.aria-label]="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="showPassword" (click)="showPassword = !showPassword">{{ showPassword ? 'Ocultar' : 'Mostrar' }}</button>
+        </div>
         @if (error) { <div class="alert error" role="alert">{{ error }}</div> }
         <button class="button primary full" type="submit" [disabled]="loading">{{ loading ? 'Ingresando…' : 'Iniciar sesión' }}</button>
       </form>

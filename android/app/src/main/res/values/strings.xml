@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ElectoMap</string>
+    <string name="title_activity_main">ElectoMap</string>
+    <string name="package_name">com.electomap.app</string>
+    <string name="custom_url_scheme">com.electomap.app</string>
+</resources>

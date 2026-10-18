@@ -31,6 +31,7 @@ export class App {
 
   username = '';
   password = '';
+  showPassword = false;
   section: Section = 'dashboard';
   loading = false;
   error = '';
