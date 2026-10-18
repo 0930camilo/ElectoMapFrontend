@@ -304,6 +304,9 @@
       </header>
       @if (isAdmin) { <p class="profile-editor-hint">Completa tus nombres y apellidos. Si dejas el correo vacío, se conservará el que ya tienes.</p> }
       @if (profileError) { <div class="alert error profile-editor-error" role="alert">{{ profileError }}</div> }
+      @if (profileLoading) {
+        <div class="loading" role="status">Cargando tus datos actuales…</div>
+      } @else if (!profileError) {
       <form (ngSubmit)="saveProfile()">
         <div class="form-grid">
           <label>Nombres<input name="profileNombres" [(ngModel)]="profileForm.nombres" required maxlength="100" autocomplete="given-name"></label>
@@ -320,6 +323,7 @@
         </div>
         <div class="modal-actions"><button class="button outline" type="button" (click)="closeProfileEditor()">Cancelar</button><button class="button primary" type="submit" [disabled]="loading()">{{ loading() ? 'Guardando…' : 'Guardar perfil' }}</button></div>
       </form>
+      }
     </section>
   </div>
 }

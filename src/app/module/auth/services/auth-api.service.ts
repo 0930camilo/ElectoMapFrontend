@@ -12,6 +12,10 @@ export class AuthApiService {
     return this.api.request('/api/auth/login', 'POST', { username, password });
   }
 
+  getProfile(): Observable<ProfileResponse> {
+    return this.api.get('/api/perfil/me');
+  }
+
   updateProfile(value: ProfileUpdateRequest): Observable<ProfileResponse> {
     return this.api.request('/api/perfil/me', 'PUT', value);
   }

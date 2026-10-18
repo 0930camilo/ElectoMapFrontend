@@ -52,6 +52,7 @@ export class App {
   notice = '';
   modal: Entity | null = null;
   profileModalOpen = false;
+  profileLoading = false;
   profileError = '';
   profileForm: ProfileUpdateRequest = this.emptyProfileForm();
   editingId: number | null = null;
@@ -158,24 +159,29 @@ export class App {
 
     this.profileForm = { ...this.emptyProfileForm(), username: user.username };
     this.profileModalOpen = true;
-    if (user.rol === 'LIDER') {
+    this.profileLoading = true;
+    try {
       await this.run(async () => {
-        const leader = await firstValueFrom(this.liderApi.getCurrent());
+        const profile = await firstValueFrom(this.authApi.getProfile());
         this.profileForm = {
-          ...this.profileForm,
-          nombres: leader.nombres,
-          apellidos: leader.apellidos,
-          username: leader.username,
-          email: leader.email ?? '',
-          telefono: leader.telefono ?? '',
+          nombres: profile.nombres ?? '',
+          apellidos: profile.apellidos ?? '',
+          username: profile.username || user.username,
+          email: profile.email ?? '',
+          telefono: profile.telefono ?? '',
+          nuevaClave: '',
         };
       });
       this.profileError = this.error;
+      this.error = '';
+    } finally {
+      this.profileLoading = false;
     }
   }
 
   closeProfileEditor(): void {
     this.profileModalOpen = false;
+    this.profileLoading = false;
     this.profileError = '';
     this.profileForm = this.emptyProfileForm();
   }
