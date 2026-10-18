@@ -16,7 +16,10 @@
           <button class="password-toggle" type="button" [attr.aria-label]="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="showPassword" (click)="showPassword = !showPassword">{{ showPassword ? 'Ocultar' : 'Mostrar' }}</button>
         </div>
         @if (error) { <div class="alert error" role="alert">{{ error }}</div> }
-        <button class="button primary full" type="submit" [disabled]="loading">{{ loading ? 'Ingresando…' : 'Iniciar sesión' }}</button>
+        <button class="button primary full login-submit" type="submit" [disabled]="loading" [attr.aria-busy]="loading">
+          @if (loading) { <span class="login-spinner" aria-hidden="true"></span> }
+          <span>{{ loading ? 'Ingresando…' : 'Iniciar sesión' }}</span>
+        </button>
       </form>
       <p class="login-foot">Acceso protegido · API ElectoMap</p>
     </section>
