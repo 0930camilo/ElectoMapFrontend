@@ -73,6 +73,7 @@ export class App {
   auditFilters: Record<string, string> = {};
   selectedFile: File | null = null;
   importLeaderId = '';
+  importLeaderSearch = '';
   importResult: ImportValidation | null = null;
   selectedVoter: Voter | null = null;
   voterHistory: AssignmentHistory[] | null = null;
@@ -126,6 +127,32 @@ export class App {
   get isLeader(): boolean { return this.auth.user()?.rol === 'LIDER'; }
   get activeLeaderOptions(): Leader[] {
     return this.leaderOptions.filter(leader => leader.estado === 'ACTIVO');
+  }
+  get activeCabeceraOptions(): Cabecera[] {
+    return this.cabeceraOptions.filter(cabecera => cabecera.estado === 'ACTIVA');
+  }
+  cabeceraOptionLabel(item: Cabecera): string {
+    return `${item.nombre} · ${item.estado} (#${item.id})`;
+  }
+  leaderOptionLabel(item: Leader): string {
+    return `${item.documento} · ${item.nombres} ${item.apellidos} (#${item.id})`;
+  }
+  importLeaderOptionLabel(item: Leader): string {
+    return `${item.nombres} ${item.apellidos} · ${item.documento} · ${item.cabeceraNombre || 'Sin cabecera'} (${item.estado}) (#${item.id})`;
+  }
+  selectCabecera(search: string): void {
+    const selected = this.cabeceraOptions.find(item =>
+      this.cabeceraOptionLabel(item) === search
+      && (this.editingId !== null || item.estado === 'ACTIVA'));
+    this.form['cabeceraId'] = selected ? String(selected.id) : '';
+  }
+  selectLeader(search: string): void {
+    const selected = this.activeLeaderOptions.find(item => this.leaderOptionLabel(item) === search);
+    this.form['liderDocumento'] = selected?.documento ?? '';
+  }
+  selectImportLeader(search: string): void {
+    const selected = this.activeLeaderOptions.find(item => this.importLeaderOptionLabel(item) === search);
+    this.importLeaderId = selected ? String(selected.id) : '';
   }
   get displayName(): string { return this.auth.user()?.username ?? ''; }
   get sectionTitle(): string {
@@ -254,7 +281,9 @@ export class App {
         case 'votantes': await this.loadVotantes(); break;
         case 'auditoria': await this.loadAuditoria(); break;
         case 'importaciones':
-          await this.loadSelectionOptions();
+          if (this.isAdmin) {
+            this.leaderOptions = await this.loadAllLideres();
+          }
           break;
       }
     });
@@ -331,11 +360,13 @@ export class App {
       this.form = {
         nombres: row.nombres, apellidos: row.apellidos, documento: row.documento,
         telefono: row.telefono ?? '', email: row.email ?? '', nuevaClave: '',
-        cabeceraId: String(row.cabeceraId),
+        cabeceraId: String(row.cabeceraId), cabeceraSearch: '',
       };
       void this.run(async () => {
         this.cabeceraOptions = await this.loadAllCabeceras();
-      });
+          const selected = this.cabeceraOptions.find(item => String(item.id) === this.form['cabeceraId']);
+          this.form['cabeceraSearch'] = selected ? this.cabeceraOptionLabel(selected) : '';
+        });
     } else if (entity === 'votante') {
       const row = value as Voter;
       this.resetOcr();
@@ -415,6 +446,14 @@ export class App {
     const entity = this.modal;
     const id = this.editingId ?? undefined;
     const value = { ...this.form };
+    if (entity === 'lider' && !value['cabeceraId']) {
+      this.error = 'Busca y selecciona una cabecera válida.';
+      return;
+    }
+    if (entity === 'votante' && !id && this.isAdmin && !value['liderDocumento']) {
+      this.error = 'Busca y selecciona un líder activo.';
+      return;
+    }
     if (entity === 'lider' && !id && value['password'].length < 12) {
       this.error = 'La contraseña debe tener entre 12 y 72 caracteres.';
       return;
@@ -440,7 +479,16 @@ export class App {
                 ...(value['nuevaClave'] ? { nuevaClave: value['nuevaClave'] } : {}),
                 cabeceraId: Number(value['cabeceraId']),
               }
-            : { ...value, cabeceraId: Number(value['cabeceraId']) };
+            : {
+                nombres: value['nombres'],
+                apellidos: value['apellidos'],
+                documento: value['documento'],
+                telefono: value['telefono'],
+                email: value['email'],
+                username: value['username'],
+                password: value['password'],
+                cabeceraId: Number(value['cabeceraId']),
+              };
           await firstValueFrom(this.liderApi.save(body, id));
           await this.loadLideres();
           break;
@@ -448,6 +496,7 @@ export class App {
         case 'votante':
           if (!id && this.isAdmin) {
             const { liderDocumento, ...votante } = value;
+            delete votante['liderSearch'];
             await firstValueFrom(this.votanteApi.saveForLeader(liderDocumento, votante));
           } else {
             await firstValueFrom(this.votanteApi.save(value, id));
@@ -573,18 +622,43 @@ export class App {
 
   async validateImport(): Promise<void> {
     if (!this.selectedFile) { this.error = 'Selecciona primero un archivo CSV o XLSX.'; return; }
+    if (this.isAdmin && !this.importLeaderId) {
+      this.error = 'Busca y selecciona un líder activo antes de validar el archivo.';
+      return;
+    }
     await this.run(async () => {
-      this.importResult = await firstValueFrom(this.importApi.validate(this.selectedFile!));
+      const liderId = this.isAdmin ? Number(this.importLeaderId) : undefined;
+      this.importResult = await firstValueFrom(this.importApi.validate(this.selectedFile!, liderId));
+    });
+  }
+
+  async downloadImportTemplate(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    await this.run(async () => {
+      const blob = await firstValueFrom(this.importApi.downloadTemplate());
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'plantilla_votantes.xlsx';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
     });
   }
 
   async executeImport(): Promise<void> {
-    if (!this.selectedFile || !this.importLeaderId) {
-      this.error = 'Selecciona el archivo y el líder responsable.';
+    if (!this.selectedFile) {
+      this.error = 'Selecciona primero el archivo de votantes.';
+      return;
+    }
+    if (this.isAdmin && !this.importLeaderId) {
+      this.error = 'Busca y selecciona un líder activo de las sugerencias.';
       return;
     }
     await this.run(async () => {
-      this.importResult = await firstValueFrom(this.importApi.execute(this.selectedFile!, Number(this.importLeaderId)));
+      const liderId = this.isAdmin ? Number(this.importLeaderId) : undefined;
+      this.importResult = await firstValueFrom(this.importApi.execute(this.selectedFile!, liderId));
       this.notice = 'Importación procesada.';
       await this.loadVotantes();
     });
@@ -596,7 +670,8 @@ export class App {
       return;
     }
     await this.run(async () => {
-      const blob = await firstValueFrom(this.importApi.downloadErrorReport(this.selectedFile!));
+      const liderId = this.isAdmin ? Number(this.importLeaderId) : undefined;
+      const blob = await firstValueFrom(this.importApi.downloadErrorReport(this.selectedFile!, liderId));
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -647,8 +722,8 @@ export class App {
   private initialForm(entity: Entity): Record<string, string> {
     switch (entity) {
       case 'cabecera': return { nombre: '', descripcion: '', zona: '' };
-      case 'lider': return { nombres: '', apellidos: '', documento: '', telefono: '', email: '', username: '', password: '', cabeceraId: '' };
-      case 'votante': return { tipoDocumento: 'CC', numeroDocumento: '', nombres: '', apellidos: '', telefono: '', departamentoVotacion: '', municipioVotacion: '', puestoVotacion: '', direccion: '', barrio: '', mesaVotacion: '', estado: 'PENDIENTE', observaciones: '', ...(this.isAdmin ? { liderDocumento: '' } : {}) };
+      case 'lider': return { nombres: '', apellidos: '', documento: '', telefono: '', email: '', username: '', password: '', cabeceraId: '', cabeceraSearch: '' };
+      case 'votante': return { tipoDocumento: 'CC', numeroDocumento: '', nombres: '', apellidos: '', telefono: '', departamentoVotacion: '', municipioVotacion: '', puestoVotacion: '', direccion: '', barrio: '', mesaVotacion: '', estado: 'PENDIENTE', observaciones: '', ...(this.isAdmin ? { liderDocumento: '', liderSearch: '' } : {}) };
     }
   }
   private emptyProfileForm(): ProfileUpdateRequest {
@@ -662,7 +737,7 @@ export class App {
     };
   }
   private allowed(section: Section): boolean {
-    return this.isAdmin || (this.isLeader && ['dashboard', 'lideres', 'votantes'].includes(section));
+    return this.isAdmin || (this.isLeader && ['dashboard', 'lideres', 'votantes', 'importaciones'].includes(section));
   }
   private clearMessage(): void { this.error = ''; this.notice = ''; }
   private async run(operation: () => Promise<void>, errorContext: 'login' | 'default' = 'default'): Promise<void> {

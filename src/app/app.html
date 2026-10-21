@@ -36,9 +36,9 @@
         @if (isAdmin) {
           <button class="nav-link" [class.active]="section === 'cabeceras'" (click)="navigate('cabeceras')"><span class="nav-icon">⌂</span>Cabeceras</button>
           <button class="nav-link" [class.active]="section === 'lideres'" (click)="navigate('lideres')"><span class="nav-icon">♧</span>Líderes</button>
-          <button class="nav-link" [class.active]="section === 'importaciones'" (click)="navigate('importaciones')"><span class="nav-icon">⇧</span>Importaciones</button>
           <button class="nav-link" [class.active]="section === 'auditoria'" (click)="navigate('auditoria')"><span class="nav-icon">◷</span>Auditoría</button>
         }
+        @if (isAdmin || isLeader) { <button class="nav-link" [class.active]="section === 'importaciones'" (click)="navigate('importaciones')"><span class="nav-icon">⇧</span>Importaciones</button> }
         <button class="nav-link" [class.active]="section === 'votantes'" (click)="navigate('votantes')"><span class="nav-icon">♧</span>Votantes</button>
       </nav>
       <div class="sidebar-bottom">
@@ -169,17 +169,27 @@
           </tbody></table></div><ng-container *ngTemplateOutlet="pagination"></ng-container></div>
         }
 
-        @if (section === 'importaciones' && isAdmin) {
+        @if (section === 'importaciones' && (isAdmin || isLeader)) {
           <div class="import-layout">
             <article class="panel import-card"><div class="import-step"><span>01</span><div><h2>Selecciona el archivo</h2><p class="muted">CSV o Excel (.xlsx), hasta 5 MB</p></div></div>
+              <p class="muted">Descarga la plantilla con las columnas obligatorias para completar solo los datos necesarios.</p>
+              <button class="button outline full" type="button" (click)="downloadImportTemplate()" [disabled]="loading()">Descargar plantilla XLSX</button>
               <label class="file-drop"><input type="file" accept=".csv,.xlsx" (change)="selectFile($event)"><span class="upload-icon">⇧</span><strong>{{ selectedFile?.name || 'Haz clic para cargar un archivo' }}</strong><small>{{ selectedFile ? (selectedFile.size / 1024 | number:'1.0-0') + ' KB' : 'o arrástralo hasta aquí · CSV / XLSX' }}</small></label>
               <div class="required-fields"><strong>Columnas obligatorias</strong><p>tipoDocumento, numeroDocumento, nombres, apellidos, mesaVotacion</p><small>Opcionales: telefono, direccion, barrio, estado, observaciones</small></div>
               <div class="button-row"><button class="button outline" (click)="validateImport()" [disabled]="!selectedFile || loading()">Validar archivo</button><button class="button primary" (click)="downloadErrorReport()" [disabled]="!selectedFile || !importResult || loading()">Descargar errores CSV</button></div>
             </article>
-            <article class="panel import-card"><div class="import-step"><span>02</span><div><h2>Importa votantes</h2><p class="muted">Asigna los registros al líder responsable</p></div></div>
-              <label>Líder responsable<select [(ngModel)]="importLeaderId"><option value="">Selecciona un líder</option>@for (leader of leaderOptions; track leader.id) { <option [value]="leader.id" [disabled]="leader.estado !== 'ACTIVO'">{{ leader.nombres }} {{ leader.apellidos }} · {{ leader.cabeceraNombre }} ({{ leader.estado }})</option> }</select></label>
+            <article class="panel import-card"><div class="import-step"><span>02</span><div><h2>Importa votantes</h2><p class="muted">{{ isAdmin ? 'Asigna los registros a un líder responsable' : 'Los registros se asignarán a tu cuenta de líder' }}</p></div></div>
+              @if (isAdmin) {
+              <label for="import-leader-search">Líder responsable
+                <input id="import-leader-search" name="importLeaderSearch" list="import-leader-options" [(ngModel)]="importLeaderSearch" (ngModelChange)="selectImportLeader($event)" placeholder="Buscar por nombre, documento o cabecera" autocomplete="off">
+                <datalist id="import-leader-options">@for (leader of activeLeaderOptions; track leader.id) { <option [value]="importLeaderOptionLabel(leader)"></option> }</datalist>
+                <small>Escribe para filtrar y selecciona un líder activo de las sugerencias.</small>
+              </label>
+              } @else {
+                <div class="import-info"><span>i</span><p>La importación se asociará automáticamente a tu usuario. No necesitas seleccionar un líder.</p></div>
+              }
               <div class="import-info"><span>i</span><p>Primero valida el archivo. Solo se guardarán filas válidas; los errores se reportan sin interrumpir la importación.</p></div>
-              <button class="button primary full" (click)="executeImport()" [disabled]="!selectedFile || !importLeaderId || loading()">Importar registros <span>→</span></button>
+              <button class="button primary full" (click)="executeImport()" [disabled]="!selectedFile || (isAdmin && !importLeaderId) || loading()">Importar registros <span>→</span></button>
             </article>
           </div>
           @if (importResult; as result) {
@@ -230,7 +240,11 @@
           <div class="form-grid"><label class="span-2">Nombre<input name="nombre" [(ngModel)]="form['nombre']" required maxlength="150"></label><label>Zona<input name="zona" [(ngModel)]="form['zona']"></label><label class="span-2">Descripción<textarea name="descripcion" [(ngModel)]="form['descripcion']" rows="3"></textarea></label></div>
         }
         @if (modal === 'lider') {
-          <div class="form-grid"><label>Nombres<input name="nombres" [(ngModel)]="form['nombres']" required></label><label>Apellidos<input name="apellidos" [(ngModel)]="form['apellidos']" required></label><label>Documento<input name="documento" [(ngModel)]="form['documento']" required></label><label>Teléfono<input name="telefono" [(ngModel)]="form['telefono']"></label><label>Email<input name="email" type="email" [(ngModel)]="form['email']"></label><label>Cabecera<select name="cabeceraId" [(ngModel)]="form['cabeceraId']" required><option value="">Selecciona una cabecera</option>@for (item of cabeceraOptions; track item.id) { <option [value]="item.id" [disabled]="item.estado !== 'ACTIVA'">{{ item.nombre }} ({{ item.estado }})</option> }</select></label>
+          <div class="form-grid"><label>Nombres<input name="nombres" [(ngModel)]="form['nombres']" required></label><label>Apellidos<input name="apellidos" [(ngModel)]="form['apellidos']" required></label><label>Documento<input name="documento" [(ngModel)]="form['documento']" required></label><label>Teléfono<input name="telefono" [(ngModel)]="form['telefono']"></label><label>Email<input name="email" type="email" [(ngModel)]="form['email']"></label><label for="leader-cabecera-search">Cabecera
+              <input id="leader-cabecera-search" name="cabeceraSearch" list="leader-cabecera-options" [(ngModel)]="form['cabeceraSearch']" (ngModelChange)="selectCabecera($event)" placeholder="Buscar cabecera por nombre" autocomplete="off" required>
+              <datalist id="leader-cabecera-options">@for (item of (editingId ? cabeceraOptions : activeCabeceraOptions); track item.id) { <option [value]="cabeceraOptionLabel(item)"></option> }</datalist>
+              <small>Busca y selecciona una cabecera{{ editingId ? '' : ' activa' }}.</small>
+            </label>
             @if (editingId) { <label class="span-2">Nueva contraseña <small>(opcional, 12–72 caracteres)</small><input name="nuevaClave" type="password" [(ngModel)]="form['nuevaClave']" minlength="12" maxlength="72" autocomplete="new-password" placeholder="Déjala vacía para conservar la contraseña actual"></label> }
             @if (!editingId) { <label>Nombre de usuario<input name="username" [(ngModel)]="form['username']" required></label><label>Contraseña <small>(12–72 caracteres)</small><input name="password" type="password" [(ngModel)]="form['password']" required minlength="12" maxlength="72" autocomplete="new-password"></label> }
           </div>
@@ -245,7 +259,11 @@
               <div class="ocr-result"><div class="ocr-result-heading"><strong>Datos detectados</strong><span>Confianza estimada: {{ result.confianza | number:'1.0-2' }}%</span></div><div class="ocr-detected-grid"><div><small>Documento</small><strong>{{ result.numeroDocumento || 'No detectado' }}</strong></div><div><small>Departamento</small><strong>{{ result.departamentoVotacion || 'No detectado' }}</strong></div><div><small>Municipio</small><strong>{{ result.municipioVotacion || 'No detectado' }}</strong></div><div><small>Puesto</small><strong>{{ result.puestoVotacion || 'No detectado' }}</strong></div><div><small>Dirección</small><strong>{{ result.direccion || 'No detectada' }}</strong></div><div><small>Mesa</small><strong>{{ result.mesaVotacion || 'No detectada' }}</strong></div></div><details><summary>Ver texto reconocido</summary><pre>{{ result.textoDetectado || 'No se reconoció texto.' }}</pre></details></div>
             }
           </section>
-          <div class="form-grid">@if (isAdmin && !editingId) { <label class="span-2">Líder responsable<select name="liderDocumento" [(ngModel)]="form['liderDocumento']" required><option value="">Selecciona un líder activo</option>@for (item of activeLeaderOptions; track item.id) { <option [value]="item.documento">{{ item.documento }} · {{ item.nombres }} {{ item.apellidos }}</option> }</select></label> }<label>Tipo de documento<select name="tipoDocumento" [(ngModel)]="form['tipoDocumento']" required>@for (item of documentTypes; track item) { <option [value]="item">{{ item }}</option> }</select></label><label>Número de documento<input name="numeroDocumento" [(ngModel)]="form['numeroDocumento']" required></label><label>Nombres<input name="nombres" [(ngModel)]="form['nombres']" required></label><label>Apellidos<input name="apellidos" [(ngModel)]="form['apellidos']" required></label><label>Teléfono<input name="telefono" [(ngModel)]="form['telefono']"></label><label>Departamento del puesto<input name="departamentoVotacion" [(ngModel)]="form['departamentoVotacion']"></label><label>Municipio del puesto<input name="municipioVotacion" [(ngModel)]="form['municipioVotacion']"></label><label>Nombre del puesto de votación<input name="puestoVotacion" [(ngModel)]="form['puestoVotacion']"></label><label>Dirección del puesto de votación<input name="direccion" [(ngModel)]="form['direccion']"></label><label>Barrio<input name="barrio" [(ngModel)]="form['barrio']"></label><label>Mesa de votación<input name="mesaVotacion" [(ngModel)]="form['mesaVotacion']" required></label><label>Estado<select name="estado" [(ngModel)]="form['estado']">@for (item of voterStates; track item) { <option [value]="item">{{ item.replace('_', ' ') }}</option> }</select></label><label class="span-2">Observaciones<textarea name="observaciones" [(ngModel)]="form['observaciones']" rows="3"></textarea></label></div>
+          <div class="form-grid">@if (isAdmin && !editingId) { <label class="span-2" for="voter-leader-search">Líder responsable
+              <input id="voter-leader-search" name="liderSearch" list="voter-leader-options" [(ngModel)]="form['liderSearch']" (ngModelChange)="selectLeader($event)" placeholder="Buscar por nombre o documento" autocomplete="off" required>
+              <datalist id="voter-leader-options">@for (item of activeLeaderOptions; track item.id) { <option [value]="leaderOptionLabel(item)"></option> }</datalist>
+              <small>Solo puedes asociar el votante a un líder activo.</small>
+            </label> }<label>Tipo de documento<select name="tipoDocumento" [(ngModel)]="form['tipoDocumento']" required>@for (item of documentTypes; track item) { <option [value]="item">{{ item }}</option> }</select></label><label>Número de documento<input name="numeroDocumento" [(ngModel)]="form['numeroDocumento']" required></label><label>Nombres<input name="nombres" [(ngModel)]="form['nombres']" required></label><label>Apellidos<input name="apellidos" [(ngModel)]="form['apellidos']" required></label><label>Teléfono<input name="telefono" [(ngModel)]="form['telefono']"></label><label>Departamento del puesto<input name="departamentoVotacion" [(ngModel)]="form['departamentoVotacion']"></label><label>Municipio del puesto<input name="municipioVotacion" [(ngModel)]="form['municipioVotacion']"></label><label>Nombre del puesto de votación<input name="puestoVotacion" [(ngModel)]="form['puestoVotacion']"></label><label>Dirección del puesto de votación<input name="direccion" [(ngModel)]="form['direccion']"></label><label>Barrio<input name="barrio" [(ngModel)]="form['barrio']"></label><label>Mesa de votación<input name="mesaVotacion" [(ngModel)]="form['mesaVotacion']" required></label><label>Estado<select name="estado" [(ngModel)]="form['estado']">@for (item of voterStates; track item) { <option [value]="item">{{ item.replace('_', ' ') }}</option> }</select></label><label class="span-2">Observaciones<textarea name="observaciones" [(ngModel)]="form['observaciones']" rows="3"></textarea></label></div>
         }
         <div class="modal-actions"><button type="button" class="button outline" (click)="closeModal()">Cancelar</button><button type="submit" class="button primary" [disabled]="loading()">{{ loading() ? 'Guardando…' : (editingId ? 'Guardar cambios' : 'Crear registro') }}</button></div>
       </form>

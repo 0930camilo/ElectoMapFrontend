@@ -29,6 +29,10 @@ export class ApiClientService {
     return this.http.post(this.apiUrl(path), body, { responseType: 'blob' });
   }
 
+  getBlob(path: string): Observable<Blob> {
+    return this.http.get(this.apiUrl(path), { responseType: 'blob' });
+  }
+
   private apiUrl(path: string): string {
     const normalizedPath = path.replace(/^\/+/, '');
     return API_BASE_URL ? `${API_BASE_URL}/${normalizedPath}` : `/${normalizedPath}`;

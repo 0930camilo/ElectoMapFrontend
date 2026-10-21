@@ -8,22 +8,28 @@ import { ImportValidation } from '../model/import.model';
 export class ImportacionService {
   private readonly api = inject(ApiClientService);
 
-  validate(file: File): Observable<ImportValidation> {
+  downloadTemplate(): Observable<Blob> {
+    return this.api.getBlob('/api/votantes/importaciones/plantilla');
+  }
+
+  validate(file: File, liderId?: number): Observable<ImportValidation> {
     const form = new FormData();
     form.append('archivo', file);
+    if (liderId !== undefined) form.append('liderId', String(liderId));
     return this.api.request('/api/votantes/importaciones/validar', 'POST', form);
   }
 
-  execute(file: File, liderId: number): Observable<ImportValidation> {
+  execute(file: File, liderId?: number): Observable<ImportValidation> {
     const form = new FormData();
     form.append('archivo', file);
-    form.append('liderId', String(liderId));
+    if (liderId !== undefined) form.append('liderId', String(liderId));
     return this.api.request('/api/votantes/importaciones', 'POST', form);
   }
 
-  downloadErrorReport(file: File): Observable<Blob> {
+  downloadErrorReport(file: File, liderId?: number): Observable<Blob> {
     const form = new FormData();
     form.append('archivo', file);
+    if (liderId !== undefined) form.append('liderId', String(liderId));
     return this.api.blob('/api/votantes/importaciones/reporte-errores', form);
   }
 }
